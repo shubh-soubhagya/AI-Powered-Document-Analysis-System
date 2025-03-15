@@ -1,5 +1,5 @@
 .env
-AI-Powered-Document-Analysis-System\classification_modules\__pycache__
+\__pycache__
 *.pyc
 *.pyo
 *.pyd

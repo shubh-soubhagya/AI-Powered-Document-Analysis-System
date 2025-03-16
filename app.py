@@ -4,20 +4,20 @@ from classification_modules.text_extraction import extract_text_from_pdf, split_
 from collections import Counter
 import spacy
 import os
-from plagiarism.cosine_similarity import cosine_similarity_count, cosine_similarity_tfidf
-from plagiarism.jaccard_similarity import jaccard_similarity
-from plagiarism.lcs import lcs
-from plagiarism.lsh import lsh_similarity
-from plagiarism.n_gram_similarity import n_gram_similarity
-from collections import Counter
-import re
-import numpy as np
+# from plagiarism.cosine_similarity import cosine_similarity_count, cosine_similarity_tfidf
+# from plagiarism.jaccard_similarity import jaccard_similarity
+# from plagiarism.lcs import lcs
+# from plagiarism.lsh import lsh_similarity
+# from plagiarism.n_gram_similarity import n_gram_similarity
+# from collections import Counter
+# import re
+# import numpy as np
 
-# Preprocessing Function
-def preprocess_text(text):
-    text = text.lower()
-    text = re.sub(r'[^\w\s]', '', text)  # Remove punctuation
-    return text
+# # Preprocessing Function
+# def preprocess_text(text):
+#     text = text.lower()
+#     text = re.sub(r'[^\w\s]', '', text)  # Remove punctuation
+#     return text
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 CORS(app)  # Enable CORS for frontend-backend communication
@@ -30,15 +30,15 @@ def predict_category(nlp, sentences):
     most_common_label, _ = Counter(predictions).most_common(1)[0]
     return most_common_label, predictions
 
-doc1 = preprocess_text(doc1)
-doc2 = preprocess_text(doc2)
+# doc1 = preprocess_text(doc1)
+# doc2 = preprocess_text(doc2)
 
-print(f"Cosine Similarity (TF-IDF): {cosine_similarity_tfidf(doc1, doc2) * 100:.2f}%")
-print(f"Cosine Similarity (CountVectorizer): {cosine_similarity_count(doc1, doc2) * 100:.2f}%")
-print(f"Jaccard Similarity: {jaccard_similarity(doc1, doc2) * 100:.2f}%")
-print(f"LCS Similarity: {lcs(doc1, doc2) * 100:.2f}%")
-print(f"LSH Similarity: {lsh_similarity(doc1, doc2) * 100:.2f}%")
-print(f"N-Gram Similarity: {n_gram_similarity(doc1, doc2) * 100:.2f}%")
+# print(f"Cosine Similarity (TF-IDF): {cosine_similarity_tfidf(doc1, doc2) * 100:.2f}%")
+# print(f"Cosine Similarity (CountVectorizer): {cosine_similarity_count(doc1, doc2) * 100:.2f}%")
+# print(f"Jaccard Similarity: {jaccard_similarity(doc1, doc2) * 100:.2f}%")
+# print(f"LCS Similarity: {lcs(doc1, doc2) * 100:.2f}%")
+# print(f"LSH Similarity: {lsh_similarity(doc1, doc2) * 100:.2f}%")
+# print(f"N-Gram Similarity: {n_gram_similarity(doc1, doc2) * 100:.2f}%")
 
 @app.route("/")
 def index():

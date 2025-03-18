@@ -1,38 +1,53 @@
-document.getElementById("uploadForm").addEventListener("submit", async function (event) {
-    event.preventDefault();
-    
-    const fileInput = document.getElementById("pdfFile");
-    if (fileInput.files.length === 0) {
-        alert("Please select a PDF file.");
+function uploadFile() {
+    let fileInput = document.getElementById('fileInput').files[0];
+
+    if (!fileInput) {
+        alert("Please select a file to upload.");
         return;
     }
 
-    const formData = new FormData();
-    formData.append("file", fileInput.files[0]);
+    let formData = new FormData();
+    formData.append("file", fileInput);
 
-    document.getElementById("loader").classList.remove("hidden");
-    document.getElementById("result").innerHTML = "";
-
-    try {
-        const response = await fetch("http://127.0.0.1:5000/analyze", {
-            method: "POST",
-            body: formData
-        });
-
-        const data = await response.json();
-        document.getElementById("loader").classList.add("hidden");
-
-        if (response.ok) {
+    fetch("/analyze", {
+        method: "POST",
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            document.getElementById("result").innerHTML = `<p style="color: red;">Error: ${data.error}</p>`;
+        } else {
             document.getElementById("result").innerHTML = `
                 <h3>Analysis Results</h3>
-                <p><strong>Majority Category:</strong> ${data.majority_label}</p>
-                <p><strong>Predictions:</strong> ${data.all_predictions.join(", ")}</p>
+                <p><strong>Category:</strong> ${data.majority_label}</p>
+                <p><strong>Plagiarism Score:</strong> ${data.plagiarism_score}</p>
             `;
-        } else {
-            document.getElementById("result").innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
         }
-    } catch (error) {
-        document.getElementById("result").innerHTML = `<p style="color:red;">Failed to connect to the server.</p>`;
-        document.getElementById("loader").classList.add("hidden");
+    })
+    .catch(error => console.error("Error:", error));
+}
+
+function askQuestion() {
+    let query = document.getElementById('queryInput').value.trim();
+
+    if (!query) {
+        alert("Please enter a question.");
+        return;
     }
-});
+
+    fetch("/qna", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: query })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            document.getElementById("qnaResult").innerHTML = `<p style="color: red;">Error: ${data.error}</p>`;
+        } else {
+            document.getElementById("qnaResult").innerHTML = `<p><strong>Answer:</strong> ${data.answer}</p>`;
+        }
+    })
+    .catch(error => console.error("Error:", error));
+}

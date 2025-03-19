@@ -7,6 +7,8 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain.agents import create_openai_tools_agent
+from langchain.agents import AgentExecutor
 import time
 from dotenv import load_dotenv
 
@@ -49,10 +51,7 @@ Questions:{input}
 """
 )
 
-from langchain.agents import create_openai_tools_agent
 agent = create_openai_tools_agent(llm, tools, prompt)
-
-from langchain.agents import AgentExecutor
 agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=False)
 
 while True:

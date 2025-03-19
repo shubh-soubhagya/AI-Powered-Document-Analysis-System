@@ -3,6 +3,8 @@ import spacy
 import re
 import threading
 import fitz  # PyMuPDF for PDF text extraction
+from flask import Flask, render_template, request, redirect, url_for, jsonify
+from werkzeug.utils import secure_filename
 from collections import Counter
 from plagiarism.cosine_similarity import cosine_similarity_count, cosine_similarity_tfidf
 from plagiarism.jaccard_similarity import jaccard_similarity
@@ -10,8 +12,13 @@ from plagiarism.lcs import lcs
 from plagiarism.lsh import lsh_similarity
 from plagiarism.n_gram_similarity import n_gram_similarity
 
-MODEL_PATH = r"AI-Powered-Document-Analysis-System\model_training\trained_model"
-PDF_DIRECTORY = r"AI-Powered-Document-Analysis-System\pdf_app_test"  # Directory containing PDF files
+app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'uploads'
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+
+MODEL_PATH = r"model_training\trained_model"
+PDF_DIRECTORY = r"pdf_app_test"  # Directory containing PDF files
 
 # PDF Extraction Function
 def extract_text_from_pdf(pdf_path):
@@ -59,6 +66,34 @@ def check_plagiarism(docs, nlp):
     for thread in threads:
         thread.join()
 
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return redirect(request.url)
+    files = request.files.getlist('file')
+    uploaded_files = []
+
+    for file in files:
+        if file.filename.endswith('.pdf'):
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
+            extracted_text = extract_text_from_pdf(file_path)
+            uploaded_files.append({"name": filename, "text": preprocess_text(extracted_text)})
+
+    if uploaded_files:
+        results = check_plagiarism(uploaded_files)
+        return render_template('result.html', documents=uploaded_files, results=results)
+
+    return jsonify({"error": "No valid PDF files uploaded."})
+
+
 # Main Function
 def main():
     nlp = spacy.load(MODEL_PATH)
@@ -76,4 +111,6 @@ def main():
         print("❗ No PDF documents found in the specified directory.")
 
 if __name__ == "__main__":
+    # nlp = spacy.load(MODEL_PATH)
+    # app.run(debug=True)
     main()

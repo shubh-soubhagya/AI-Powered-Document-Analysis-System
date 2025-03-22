@@ -28,7 +28,7 @@ load_dotenv()
 logging.getLogger("langchain").setLevel(logging.ERROR)
 
 groq_api_key = os.getenv('GROQ_API_KEY')
-PDF_DIRECTORY = r"AI-Powered-Document-Analysis-System\pdf_app_test"
+PDF_DIRECTORY = r"C:\Users\hp\Desktop\ps_sol\AI-Powered-Document-Analysis-System\pdf_app_test"
 EMBEDDING_MODEL_PATH = r"C:\Users\hp\Desktop\ps_sol\models\all-MiniLM-L6-v2"
 
 # PDF Extraction
@@ -117,7 +117,7 @@ selected_text = extract_text_from_pdf(os.path.join(PDF_DIRECTORY, selected_pdf))
 preprocessed_text = preprocess_text(selected_text)
 
 # Load NLP Model for Prediction
-nlp = spacy.load("en_core_web_sm")
+nlp = spacy.load(r"C:\Users\hp\Desktop\ps_sol\AI-Powered-Document-Analysis-System\model_training\trained_model")
 predicted_category = predict_category(nlp, preprocessed_text)
 print(f"Predicted Category: {predicted_category}")
 

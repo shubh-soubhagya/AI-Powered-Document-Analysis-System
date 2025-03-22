@@ -1,20 +1,35 @@
 import os
-import spacy
+import logging
 import time
-import re
-import threading
 import fitz  # PyMuPDF for PDF text extraction
+import re
+import spacy
+import pandas as pd
+from tabulate import tabulate
+from dotenv import load_dotenv
 from collections import Counter
 from plagiarism.cosine_similarity import cosine_similarity_count, cosine_similarity_tfidf
 from plagiarism.jaccard_similarity import jaccard_similarity
 from plagiarism.lcs import lcs
 from plagiarism.lsh import lsh_similarity
 from plagiarism.n_gram_similarity import n_gram_similarity
-from DBAQ.data_utilization import load_pdfs, split_documents, create_vectorstore
-from DBAQ.dbqa_script import load_environment, setup_agent
+from langchain_groq import ChatGroq
+from langchain_community.document_loaders import PyPDFDirectoryLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_community.vectorstores import FAISS
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain.agents import create_openai_tools_agent, AgentExecutor
+from langchain.tools.retriever import create_retriever_tool
 
-MODEL_PATH = r"AI-Powered-Document-Analysis-System\model_training\trained_model"
+# Load Environment Variables
+load_dotenv()
+logging.getLogger("langchain").setLevel(logging.ERROR)
+
+groq_api_key = os.getenv('GROQ_API_KEY')
 PDF_DIRECTORY = r"AI-Powered-Document-Analysis-System\pdf_app_test"
+EMBEDDING_MODEL_PATH = r"C:\Users\hp\Desktop\ps_sol\models\all-MiniLM-L6-v2"
 
 # PDF Extraction
 def extract_text_from_pdf(pdf_path):
@@ -26,101 +41,113 @@ def extract_text_from_pdf(pdf_path):
 
 # Text Preprocessing
 def preprocess_text(text):
-    text = text.lower()
-    text = re.sub(r'[^\w\s]', '', text)
-    return text
+    return re.sub(r'[^\w\s]', '', text.lower())
 
 # Prediction Function
 def predict_category(nlp, text):
     doc = nlp(text)
     return max(doc.cats, key=doc.cats.get)
 
-# Plagiarism Comparison
+# Plagiarism Worker
 def plagiarism_worker(doc1, doc2, name1, name2):
-    print(f"\n🔎 Comparing: {name1} vs {name2}")
-    print(f"- Cosine Similarity (TF-IDF): {cosine_similarity_tfidf(doc1, doc2) * 100:.2f}%")
-    print(f"- Cosine Similarity (CountVectorizer): {cosine_similarity_count(doc1, doc2) * 100:.2f}%")
-    print(f"- Jaccard Similarity: {jaccard_similarity(doc1, doc2) * 100:.2f}%")
-    print(f"- LCS Similarity: {lcs(doc1, doc2) * 100:.2f}%")
-    print(f"- LSH Similarity: {lsh_similarity(doc1, doc2) * 100:.2f}%")
-    print(f"- N-Gram Similarity: {n_gram_similarity(doc1, doc2) * 100:.2f}%")
+    return {
+        "File 1": name1,
+        "File 2": name2,
+        "Cosine (TF-IDF)": f"{cosine_similarity_tfidf(doc1, doc2) * 100:.2f}%",
+        "Cosine (Count)": f"{cosine_similarity_count(doc1, doc2) * 100:.2f}%",
+        "Jaccard": f"{jaccard_similarity(doc1, doc2) * 100:.2f}%",
+        "LCS": f"{lcs(doc1, doc2) * 100:.2f}%",
+        "LSH": f"{lsh_similarity(doc1, doc2) * 100:.2f}%",
+        "N-Gram": f"{n_gram_similarity(doc1, doc2) * 100:.2f}%"
+    }
 
 # Plagiarism Check
 def check_plagiarism(docs):
+    results = []
     for i in range(len(docs)):
         for j in range(i + 1, len(docs)):
-            plagiarism_worker(docs[i]["text"], docs[j]["text"], docs[i]["name"], docs[j]["name"])
+            results.append(plagiarism_worker(docs[i]["text"], docs[j]["text"], docs[i]["name"], docs[j]["name"]))
+    return results
 
-# Load chatbot setup for the selected document
-def setup_chatbot(selected_doc, groq_api_key):
-    vectordb = create_vectorstore([selected_doc], MODEL_PATH)
-    return setup_agent(vectordb, groq_api_key)
+# Load PDFs
+loader = PyPDFDirectoryLoader(PDF_DIRECTORY)
+docs = loader.load()
+print(f"✅ Loaded {len(docs)} documents successfully.")
 
-# Main Interactive Terminal
-def main():
-    nlp = spacy.load(MODEL_PATH)
-    documents = []
+documents = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=0).split_documents(docs)
+print(f"✅ Successfully split into {len(documents)} text chunks.")
 
-    # Load and preprocess PDFs
-    for filename in os.listdir(PDF_DIRECTORY):
-        if filename.endswith(".pdf"):
-            pdf_path = os.path.join(PDF_DIRECTORY, filename)
-            extracted_text = extract_text_from_pdf(pdf_path)
-            documents.append({"name": filename, "text": preprocess_text(extracted_text)})
+# Embedding Model
+embeddings_model = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_PATH)
+vectordb = FAISS.from_documents(documents, embeddings_model)
+retriever = vectordb.as_retriever()
 
-    if not documents:
-        print("❗ No PDF documents found in the specified directory.")
-        return
+# Tool Setup
+pdf_tool = create_retriever_tool(retriever, "pdf_search", "Search for PDF information only!")
+tools = [pdf_tool]
 
-    print("\n🔎 Displaying Document Similarities:")
-    check_plagiarism(documents)
+# Load LLaMA 3 (via GROQ)
+llm = ChatGroq(groq_api_key=groq_api_key, model_name="llama3-8b-8192")
 
-    # Document Selection
-    while True:
-        print("\n📋 Select a document to analyze:")
-        for idx, doc in enumerate(documents):
-            print(f"[{idx + 1}] {doc['name']}")
+# Prompt Setup
+prompt = ChatPromptTemplate.from_template(
+"""
+Answer the questions based on the provided PDF context only.
+Provide accurate and detailed responses strictly from the PDF content.
+<context>
+{context}
+<context>
+Questions:{input}
+{agent_scratchpad}
+"""
+)
 
-        choice = input("Enter the number of the document to select (or type 'exit' to quit): ")
-        if choice.lower() in ["exit", "quit"]:
-            print("Exiting... Goodbye!")
-            break
+agent = create_openai_tools_agent(llm, tools, prompt)
+agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=False)
 
-        try:
-            selected_doc = documents[int(choice) - 1]
-        except (ValueError, IndexError):
-            print("❗ Invalid choice. Please try again.")
-            continue
+# User Selects PDF
+pdf_files = [f for f in os.listdir(PDF_DIRECTORY) if f.endswith('.pdf')]
+print("Available PDFs:")
+for idx, pdf in enumerate(pdf_files):
+    print(f"{idx + 1}. {pdf}")
 
-        # Category Prediction
-        category = predict_category(nlp, selected_doc["text"])
-        print(f"\n📄 Selected Document: {selected_doc['name']} - Predicted Category: {category}")
+choice = int(input("Select a PDF (enter number): ")) - 1
+selected_pdf = pdf_files[choice]
+selected_text = extract_text_from_pdf(os.path.join(PDF_DIRECTORY, selected_pdf))
+preprocessed_text = preprocess_text(selected_text)
 
-        # Setup Chatbot for Selected Document
-        groq_api_key = load_environment()
-        agent_executor = setup_chatbot(selected_doc, groq_api_key)
+# Load NLP Model for Prediction
+nlp = spacy.load("en_core_web_sm")
+predicted_category = predict_category(nlp, preprocessed_text)
+print(f"Predicted Category: {predicted_category}")
 
-        # Chat with Selected Document
-        print("\n💬 Chat with the selected document below. Type 'switch' to change documents or 'exit' to quit.")
-        while True:
-            query = input("You: ")
-            if query.lower() == "exit":
-                print("Exiting... Goodbye!")
-                return
-            if query.lower() == "switch":
-                break
+# Run Plagiarism Check
+print("\n🔎 Running Plagiarism Check...")
+doc_data = [{"name": pdf, "text": extract_text_from_pdf(os.path.join(PDF_DIRECTORY, pdf))} for pdf in pdf_files]
+plagiarism_results = check_plagiarism(doc_data)
 
-            start_time = time.time()
-            try:
-                response = agent_executor.invoke({
-                    "input": query,
-                    "context": "",
-                    "agent_scratchpad": ""
-                })
-                print(f"\n🟩 Response: {response['output']}")
-                print(f"⏱️ Response Time: {time.time() - start_time:.2f} seconds")
-            except Exception as e:
-                print(f"❗ Error: {e}")
+# Display Plagiarism Report
+if plagiarism_results:
+    print("\n📊 Plagiarism Report:")
+    print(tabulate(plagiarism_results, headers="keys", tablefmt="grid"))
+else:
+    print("No plagiarism detected.")
 
-if __name__ == "__main__":
-    main()
+# Chatbot Interaction
+while True:
+    query = input("\nInput your query here: ")
+    if query.lower() in ["exit", "quit", "q"]:
+        print("Exiting... Goodbye!")
+        break
+
+    start_time = time.time()
+    try:
+        response = agent_executor.invoke({
+            "input": query,
+            "context": "",
+            "agent_scratchpad": ""
+        })
+        print(f"\n🟩 Final Output:\n{response['output']}")
+        print(f"⏱️ Total Response Time: {time.time() - start_time:.2f} seconds")
+    except Exception as e:
+        print(f"❗ Error: {e}")

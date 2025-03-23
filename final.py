@@ -122,32 +122,32 @@ predicted_category = predict_category(nlp, preprocessed_text)
 print(f"Predicted Category: {predicted_category}")
 
 # Run Plagiarism Check
-print("\n🔎 Running Plagiarism Check...")
-doc_data = [{"name": pdf, "text": extract_text_from_pdf(os.path.join(PDF_DIRECTORY, pdf))} for pdf in pdf_files]
-plagiarism_results = check_plagiarism(doc_data)
+# print("\n🔎 Running Plagiarism Check...")
+# doc_data = [{"name": pdf, "text": extract_text_from_pdf(os.path.join(PDF_DIRECTORY, pdf))} for pdf in pdf_files]
+# plagiarism_results = check_plagiarism(doc_data)
 
-# Display Plagiarism Report
-if plagiarism_results:
-    print("\n📊 Plagiarism Report:")
-    print(tabulate(plagiarism_results, headers="keys", tablefmt="grid"))
-else:
-    print("No plagiarism detected.")
+# # Display Plagiarism Report
+# if plagiarism_results:
+#     print("\n📊 Plagiarism Report:")
+#     print(tabulate(plagiarism_results, headers="keys", tablefmt="grid"))
+# else:
+#     print("No plagiarism detected.")
 
-# Chatbot Interaction
-while True:
-    query = input("\nInput your query here: ")
-    if query.lower() in ["exit", "quit", "q"]:
-        print("Exiting... Goodbye!")
-        break
+# # Chatbot Interaction
+# while True:
+#     query = input("\nInput your query here: ")
+#     if query.lower() in ["exit", "quit", "q"]:
+#         print("Exiting... Goodbye!")
+#         break
 
-    start_time = time.time()
-    try:
-        response = agent_executor.invoke({
-            "input": query,
-            "context": "",
-            "agent_scratchpad": ""
-        })
-        print(f"\n🟩 Final Output:\n{response['output']}")
-        print(f"⏱️ Total Response Time: {time.time() - start_time:.2f} seconds")
-    except Exception as e:
-        print(f"❗ Error: {e}")
+#     start_time = time.time()
+#     try:
+#         response = agent_executor.invoke({
+#             "input": query,
+#             "context": "",
+#             "agent_scratchpad": ""
+#         })
+#         print(f"\n🟩 Final Output:\n{response['output']}")
+#         print(f"⏱️ Total Response Time: {time.time() - start_time:.2f} seconds")
+#     except Exception as e:
+#         print(f"❗ Error: {e}")

@@ -31,7 +31,7 @@ groq_api_key = os.getenv('GROQ_API_KEY')
 PDF_DIRECTORY = r"C:\Users\hp\Desktop\ps_sol\AI-Powered-Document-Analysis-System\pdf_app_test"
 EMBEDDING_MODEL_PATH = r"C:\Users\hp\Desktop\ps_sol\models\all-MiniLM-L6-v2"
 
-# PDF Extraction
+# Function: Extract text from PDF
 def extract_text_from_pdf(pdf_path):
     text = ""
     with fitz.open(pdf_path) as doc:
@@ -39,16 +39,16 @@ def extract_text_from_pdf(pdf_path):
             text += page.get_text()
     return text.strip()
 
-# Text Preprocessing
+# Function: Preprocess text
 def preprocess_text(text):
     return re.sub(r'[^\w\s]', '', text.lower())
 
-# Prediction Function
+# Function: Predict category using NLP model
 def predict_category(nlp, text):
     doc = nlp(text)
     return max(doc.cats, key=doc.cats.get)
 
-# Plagiarism Worker
+# Function: Perform plagiarism check
 def plagiarism_worker(doc1, doc2, name1, name2):
     return {
         "File 1": name1,
@@ -61,7 +61,6 @@ def plagiarism_worker(doc1, doc2, name1, name2):
         "N-Gram": f"{n_gram_similarity(doc1, doc2) * 100:.2f}%"
     }
 
-# Plagiarism Check
 def check_plagiarism(docs):
     results = []
     for i in range(len(docs)):
@@ -69,7 +68,37 @@ def check_plagiarism(docs):
             results.append(plagiarism_worker(docs[i]["text"], docs[j]["text"], docs[i]["name"], docs[j]["name"]))
     return results
 
-# Load PDFs
+# Load PDFs and Extract Text
+pdf_files = [f for f in os.listdir(PDF_DIRECTORY) if f.endswith('.pdf')]
+doc_data = [{"name": pdf, "text": extract_text_from_pdf(os.path.join(PDF_DIRECTORY, pdf))} for pdf in pdf_files]
+
+# Run Plagiarism Check
+print("\n🔎 Running Plagiarism Check...")
+plagiarism_results = check_plagiarism(doc_data)
+
+# Display Plagiarism Report First
+if plagiarism_results:
+    print("\n📊 Plagiarism Report:")
+    print(tabulate(plagiarism_results, headers="keys", tablefmt="grid"))
+else:
+    print("No plagiarism detected.")
+
+# User Selects PDF
+print("\nAvailable PDFs:")
+for idx, pdf in enumerate(pdf_files):
+    print(f"{idx + 1}. {pdf}")
+
+choice = int(input("Select a PDF (enter number): ")) - 1
+selected_pdf = pdf_files[choice]
+selected_text = extract_text_from_pdf(os.path.join(PDF_DIRECTORY, selected_pdf))
+preprocessed_text = preprocess_text(selected_text)
+
+# Load NLP Model for Prediction
+nlp = spacy.load(r"C:\Users\hp\Desktop\ps_sol\AI-Powered-Document-Analysis-System\model_training\trained_model")
+predicted_category = predict_category(nlp, preprocessed_text)
+print(f"\n📂 Predicted Category: {predicted_category}")
+
+# **LangChain: Document Loading & Vector DB Setup**
 loader = PyPDFDirectoryLoader(PDF_DIRECTORY)
 docs = loader.load()
 print(f"✅ Loaded {len(docs)} documents successfully.")
@@ -77,7 +106,6 @@ print(f"✅ Loaded {len(docs)} documents successfully.")
 documents = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=0).split_documents(docs)
 print(f"✅ Successfully split into {len(documents)} text chunks.")
 
-# Embedding Model
 embeddings_model = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_PATH)
 vectordb = FAISS.from_documents(documents, embeddings_model)
 retriever = vectordb.as_retriever()
@@ -104,83 +132,6 @@ Questions:{input}
 
 agent = create_openai_tools_agent(llm, tools, prompt)
 agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=False)
-
-# User Selects PDF
-pdf_files = [f for f in os.listdir(PDF_DIRECTORY) if f.endswith('.pdf')]
-print("Available PDFs:")
-for idx, pdf in enumerate(pdf_files):
-    print(f"{idx + 1}. {pdf}")
-
-choice = int(input("Select a PDF (enter number): ")) - 1
-selected_pdf = pdf_files[choice]
-selected_text = extract_text_from_pdf(os.path.join(PDF_DIRECTORY, selected_pdf))
-preprocessed_text = preprocess_text(selected_text)
-
-# Load NLP Model for Prediction
-nlp = spacy.load(r"C:\Users\hp\Desktop\ps_sol\AI-Powered-Document-Analysis-System\model_training\trained_model")
-predicted_category = predict_category(nlp, preprocessed_text)
-print(f"Predicted Category: {predicted_category}")
-
-# Run Plagiarism Check
-# print("\n🔎 Running Plagiarism Check...")
-# doc_data = [{"name": pdf, "text": extract_text_from_pdf(os.path.join(PDF_DIRECTORY, pdf))} for pdf in pdf_files]
-# plagiarism_results = check_plagiarism(doc_data)
-
-# # Display Plagiarism Report
-# if plagiarism_results:
-#     print("\n📊 Plagiarism Report:")
-#     print(tabulate(plagiarism_results, headers="keys", tablefmt="grid"))
-# else:
-#     print("No plagiarism detected.")
-
-# # Chatbot Interaction
-# while True:
-#     query = input("\nInput your query here: ")
-#     if query.lower() in ["exit", "quit", "q"]:
-#         print("Exiting... Goodbye!")
-#         break
-
-#     start_time = time.time()
-#     try:
-#         response = agent_executor.invoke({
-#             "input": query,
-#             "context": "",
-#             "agent_scratchpad": ""
-#         })
-#         print(f"\n🟩 Final Output:\n{response['output']}")
-#         print(f"⏱️ Total Response Time: {time.time() - start_time:.2f} seconds")
-#     except Exception as e:
-#         print(f"❗ Error: {e}")
-
-# Load PDFs and Extract Text
-pdf_files = [f for f in os.listdir(PDF_DIRECTORY) if f.endswith('.pdf')]
-doc_data = [{"name": pdf, "text": extract_text_from_pdf(os.path.join(PDF_DIRECTORY, pdf))} for pdf in pdf_files]
-
-# Run Plagiarism Check
-print("\n🔎 Running Plagiarism Check...")
-plagiarism_results = check_plagiarism(doc_data)
-
-# Display Plagiarism Report First
-if plagiarism_results:
-    print("\n📊 Plagiarism Report:")
-    print(tabulate(plagiarism_results, headers="keys", tablefmt="grid"))
-else:
-    print("No plagiarism detected.")
-
-# **Now, Prompt User to Select a PDF**
-print("\nAvailable PDFs:")
-for idx, pdf in enumerate(pdf_files):
-    print(f"{idx + 1}. {pdf}")
-
-choice = int(input("Select a PDF (enter number): ")) - 1
-selected_pdf = pdf_files[choice]
-selected_text = extract_text_from_pdf(os.path.join(PDF_DIRECTORY, selected_pdf))
-preprocessed_text = preprocess_text(selected_text)
-
-# Load NLP Model for Prediction
-nlp = spacy.load(r"C:\Users\hp\Desktop\ps_sol\AI-Powered-Document-Analysis-System\model_training\trained_model")
-predicted_category = predict_category(nlp, preprocessed_text)
-print(f"\n📂 Predicted Category: {predicted_category}")
 
 # **Q/A Chatbot Interaction**
 while True:

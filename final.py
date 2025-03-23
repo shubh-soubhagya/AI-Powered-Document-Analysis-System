@@ -151,3 +151,52 @@ print(f"Predicted Category: {predicted_category}")
 #         print(f"⏱️ Total Response Time: {time.time() - start_time:.2f} seconds")
 #     except Exception as e:
 #         print(f"❗ Error: {e}")
+
+# Load PDFs and Extract Text
+pdf_files = [f for f in os.listdir(PDF_DIRECTORY) if f.endswith('.pdf')]
+doc_data = [{"name": pdf, "text": extract_text_from_pdf(os.path.join(PDF_DIRECTORY, pdf))} for pdf in pdf_files]
+
+# Run Plagiarism Check
+print("\n🔎 Running Plagiarism Check...")
+plagiarism_results = check_plagiarism(doc_data)
+
+# Display Plagiarism Report First
+if plagiarism_results:
+    print("\n📊 Plagiarism Report:")
+    print(tabulate(plagiarism_results, headers="keys", tablefmt="grid"))
+else:
+    print("No plagiarism detected.")
+
+# **Now, Prompt User to Select a PDF**
+print("\nAvailable PDFs:")
+for idx, pdf in enumerate(pdf_files):
+    print(f"{idx + 1}. {pdf}")
+
+choice = int(input("Select a PDF (enter number): ")) - 1
+selected_pdf = pdf_files[choice]
+selected_text = extract_text_from_pdf(os.path.join(PDF_DIRECTORY, selected_pdf))
+preprocessed_text = preprocess_text(selected_text)
+
+# Load NLP Model for Prediction
+nlp = spacy.load(r"C:\Users\hp\Desktop\ps_sol\AI-Powered-Document-Analysis-System\model_training\trained_model")
+predicted_category = predict_category(nlp, preprocessed_text)
+print(f"\n📂 Predicted Category: {predicted_category}")
+
+# **Q/A Chatbot Interaction**
+while True:
+    query = input("\nInput your query here: ")
+    if query.lower() in ["exit", "quit", "q"]:
+        print("Exiting... Goodbye!")
+        break
+
+    start_time = time.time()
+    try:
+        response = agent_executor.invoke({
+            "input": query,
+            "context": "",
+            "agent_scratchpad": ""
+        })
+        print(f"\n🟩 Final Output:\n{response['output']}")
+        print(f"⏱️ Total Response Time: {time.time() - start_time:.2f} seconds")
+    except Exception as e:
+        print(f"❗ Error: {e}")

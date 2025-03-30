@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Buddy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+        }
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+        .home-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-top: 2rem;
+        }
+        .progress {
+            height: 25px;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .info-btn {
+            cursor: pointer;
+            color: #0d6efd;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">Document Buddy</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal">About</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="home-container">
+            <h2 class="text-center mb-4">Welcome to Document Buddy</h2>
+            <p class="lead text-center">An AI-powered document analysis system for PDF analysis, plagiarism detection, and intelligent chat.</p>
+            
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h5 class="card-title">Upload your PDF directory</h5>
+                    <p class="card-text">Enter the full path to your directory containing PDF files:</p>
+                    <form id="directoryForm">
+                        <div class="mb-3">
+                            <input type="text" class="form-control" id="directoryPath" required 
+                                   placeholder="e.g., C:\Users\username\Documents\PDFs">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Process Directory</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="text-center" style="width: 80%; max-width: 600px;">
+            <h3 id="statusMessage">Loading, this could take some time.</h3>
+            <p><span class="info-btn" data-bs-toggle="modal" data-bs-target="#infoModal">More info</span></p>
+            
+            <div class="progress mt-3 mb-3">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                     id="progressBar" role="progressbar" style="width: 0%"></div>
+            </div>
+            
+            <p id="detailedStatus">Initializing...</p>
+        </div>
+    </div>
+
+    <!-- Info Modal -->
+    <div class="modal fade" id="infoModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Processing Information</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>Why does processing take time?</h6>
+                    <p>Document Buddy performs several intensive operations:</p>
+                    <ul>
+                        <li><strong>Text Extraction:</strong> Extracting text from multiple PDFs</li>
+                        <li><strong>Plagiarism Detection:</strong> Running multiple similarity algorithms on document pairs</li>
+                        <li><strong>Vector Database:</strong> Creating embeddings for semantic search</li>
+                        <li><strong>Document Classification:</strong> Analyzing document content to predict categories</li>
+                    </ul>
+                    <p>The processing time depends on the number and size of your PDF documents.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div class="modal fade" id="aboutModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">About Document Buddy</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Document Buddy is an AI-powered document analysis system that helps you:</p>
+                    <ul>
+                        <li>Detect plagiarism between documents using multiple algorithms</li>
+                        <li>Classify documents into categories automatically</li>
+                        <li>Chat with your documents using advanced AI</li>
+                    </ul>
+                    <p>Built with Python, Flask, and various NLP technologies.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('directoryForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const directoryPath = document.getElementById('directoryPath').value;
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const progressBar = document.getElementById('progressBar');
+            const statusMessage = document.getElementById('statusMessage');
+            const detailedStatus = document.getElementById('detailedStatus');
+            
+            // Show loading overlay
+            loadingOverlay.style.display = 'flex';
+            
+            // Send directory path to server
+            fetch('/upload', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'directory_path=' + encodeURIComponent(directoryPath)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    loadingOverlay.style.display = 'none';
+                    return;
+                }
+                
+                // Start checking status
+                checkStatus();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+                loadingOverlay.style.display = 'none';
+            });
+        });
+        
+        function checkStatus() {
+            fetch('/status')
+                .then(response => response.json())
+                .then(data => {
+                    const progressBar = document.getElementById('progressBar');
+                    const detailedStatus = document.getElementById('detailedStatus');
+                    
+                    progressBar.style.width = data.progress + '%';
+                    detailedStatus.textContent = data.status_message;
+                    
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                        document.getElementById('loadingOverlay').style.display = 'none';
+                        return;
+                    }
+                    
+                    if (data.is_processing) {
+                        // Check again in 1 second
+                        setTimeout(checkStatus, 1000);
+                    } else if (data.progress === 100) {
+                        // Redirect to dashboard when complete
+                        window.location.href = '/dashboard';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking status:', error);
+                    setTimeout(checkStatus, 2000); // Try again after 2 seconds
+                });
+        }
+    </script>
+</body>
+</html>

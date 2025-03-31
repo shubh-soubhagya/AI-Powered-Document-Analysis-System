@@ -23,13 +23,24 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.agents import create_openai_tools_agent, AgentExecutor
 from langchain.tools.retriever import create_retriever_tool
 
+# from sentence_transformers import SentenceTransformer
+#
+# # Define model name
+# model_name = "sentence-transformers/all-MiniLM-L6-v2"
+#
+# # Load the model
+# model = SentenceTransformer(model_name)
+#
+# # Save the model locally
+# model.save("models/all-MiniLM-L6-v2")
+
 # Load Environment Variables
 load_dotenv()
 logging.getLogger("langchain").setLevel(logging.ERROR)
 
 groq_api_key = os.getenv('GROQ_API_KEY')
-PDF_DIRECTORY = r"C:\Users\hp\Desktop\ps_sol\AI-Powered-Document-Analysis-System\pdf_app_test"
-EMBEDDING_MODEL_PATH = r"C:\Users\hp\Desktop\ps_sol\models\all-MiniLM-L6-v2"
+PDF_DIRECTORY = r"pdf_app_test"
+EMBEDDING_MODEL_PATH = r"models\all-MiniLM-L6-v2"
 
 # Function: Extract text from PDF
 def extract_text_from_pdf(pdf_path):
@@ -95,7 +106,7 @@ while True:
     preprocessed_text = preprocess_text(selected_text)
     
     # Load NLP Model for Prediction
-    nlp = spacy.load(r"C:\Users\hp\Desktop\ps_sol\AI-Powered-Document-Analysis-System\model_training\trained_model")
+    nlp = spacy.load(r"model_training\trained_model")
     predicted_category = predict_category(nlp, preprocessed_text)
     print(f"\n📂 Predicted Category: {predicted_category}")
     

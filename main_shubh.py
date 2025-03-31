@@ -33,7 +33,7 @@ app.secret_key = os.urandom(24)
 # Global variables
 UPLOAD_FOLDER = 'uploads'
 # EMBEDDING_MODEL_PATH = os.environ.get('EMBEDDING_MODEL_PATH', 'all-MiniLM-L6-v2')
-EMBEDDING_MODEL_PATH = r"C:\Users\hp\Desktop\ps_sol\models\all-MiniLM-L6-v2"
+EMBEDDING_MODEL_PATH = r"models\all-MiniLM-L6-v2"
 groq_api_key = os.environ.get('GROQ_API_KEY')
 
 # Ensure upload directory exists

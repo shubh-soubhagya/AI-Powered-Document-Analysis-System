@@ -1,118 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document Buddy</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="..\static\styles.css">
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI-Powered Document Analysis System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <link rel="stylesheet" href="..\static\styles.css" />
+  </head>
+  <body>
     <!-- Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="/">Document Buddy</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal">About</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
+    <nav class="navbar">
+      <h1>AI-Powered Document Analysis</h1>
     </nav>
 
-    <div class="container mt-4">
-        <div class="home-container">
-            <h2 class="text-center mb-4">Welcome to Document Buddy</h2>
-            <p class="lead text-center">An AI-powered document analysis system for PDF analysis, plagiarism detection, and intelligent chat.</p>
-            
-            <div class="card mt-4">
-                <div class="card-body">
-                    <h5 class="card-title">Upload your PDF directory</h5>
-                    <p class="card-text">Enter the full path to your directory containing PDF files:</p>
-                    <form id="directoryForm">
-                        <div class="mb-3">
-                            <input type="text" class="form-control" id="directoryPath" required 
-                                   placeholder="e.g., C:\Users\username\Documents\PDFs">
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">Process Directory</button>
-                    </form>
-                </div>
-            </div>
-        </div>
+    <!-- Upload Section -->
+    <div class="upload-section">
+      <h2>Upload PDF Directory</h2>
+      <input type="file" id="directory-upload" webkitdirectory directory multiple />
+      <button onclick="uploadDirectory()">Upload</button>
     </div>
 
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
-        <div class="text-center" style="width: 80%; max-width: 600px;">
-            <h3 id="statusMessage">Loading, this could take some time.</h3>
-            <p><span class="info-btn" data-bs-toggle="modal" data-bs-target="#infoModal">More info</span></p>
-            
-            <div class="progress mt-3 mb-3">
-                <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                     id="progressBar" role="progressbar" style="width: 0%"></div>
-            </div>
-            
-            <p id="detailedStatus">Initializing...</p>
-        </div>
-    </div>
+    <!-- Main Content -->
+    <div class="container">
+      <!-- Left Section: Plagiarism & Categorization -->
+      <div class="left-section">
+        <h2>Plagiarism & Categorization Report</h2>
 
-    <!-- Info Modal -->
-    <div class="modal fade" id="infoModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Processing Information</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <h6>Why does processing take time?</h6>
-                    <p>Document Buddy performs several intensive operations:</p>
-                    <ul>
-                        <li><strong>Text Extraction:</strong> Extracting text from multiple PDFs</li>
-                        <li><strong>Plagiarism Detection:</strong> Running multiple similarity algorithms on document pairs</li>
-                        <li><strong>Vector Database:</strong> Creating embeddings for semantic search</li>
-                        <li><strong>Document Classification:</strong> Analyzing document content to predict categories</li>
-                    </ul>
-                    <p>The processing time depends on the number and size of your PDF documents.</p>
-                </div>
-            </div>
-        </div>
-    </div>
+        <!-- Plagiarism Table -->
+        <table id="plagiarism-table">
+          <thead>
+            <tr>
+              <th>File 1</th>
+              <th>File 2</th>
+              <th>Cosine (TF-IDF)</th>
+              <th>Jaccard</th>
+              <th>N-Gram</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
 
-    <!-- About Modal -->
-    <div class="modal fade" id="aboutModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">About Document Buddy</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Document Buddy is an AI-powered document analysis system that helps you:</p>
-                    <ul>
-                        <li>Detect plagiarism between documents using multiple algorithms</li>
-                        <li>Classify documents into categories automatically</li>
-                        <li>Chat with your documents using advanced AI</li>
-                    </ul>
-                    <p>Built with Python, Flask, and various NLP technologies.</p>
-                </div>
-            </div>
-        </div>
-    </div>
+        <!-- Uploaded PDFs List -->
+        <h3>Uploaded Documents</h3>
+        <ul id="pdf-list"></ul>
+      </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="..\static\script.js"></script>
-</body>
+      <!-- Right Section: Chatbot Panel -->
+      <div class="right-section">
+        <h2>Chatbot</h2>
+        <div id="chatbox">
+          <p>Select a document to start a query.</p>
+        </div>
+      </div>
+    </div>
+  </body>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="..\static\script.js"></script>
 </html>

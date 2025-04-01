@@ -1,122 +1,79 @@
-// function uploadFile() {
-//     let fileInput = document.getElementById('fileInput').files[0];
+document.addEventListener("DOMContentLoaded", function () {
+    loadPlagiarismData();
+    loadPDFList();
+});
 
-//     if (!fileInput) {
-//         alert("Please select a file to upload.");
-//         return;
-//     }
+// Function to Upload Directory
+function uploadDirectory() {
+    let files = document.getElementById("directory-upload").files;
+    if (files.length === 0) {
+        alert("Please select a directory containing PDFs!");
+        return;
+    }
 
-//     let formData = new FormData();
-//     formData.append("file", fileInput);
+    let formData = new FormData();
+    for (let file of files) {
+        formData.append("pdfs", file);
+    }
 
-//     fetch("/analyze", {
-//         method: "POST",
-//         body: formData
-//     })
-//     .then(response => response.json())
-//     .then(data => {
-//         if (data.error) {
-//             document.getElementById("result").innerHTML = `<p style="color: red;">Error: ${data.error}</p>`;
-//         } else {
-//             document.getElementById("result").innerHTML = `
-//                 <h3>Analysis Results</h3>
-//                 <p><strong>Category:</strong> ${data.majority_label}</p>
-//                 <p><strong>Plagiarism Score:</strong> ${data.plagiarism_score}</p>
-//             `;
-//         }
-//     })
-//     .catch(error => console.error("Error:", error));
-// }
-
-// function askQuestion() {
-//     let query = document.getElementById('queryInput').value.trim();
-
-//     if (!query) {
-//         alert("Please enter a question.");
-//         return;
-//     }
-
-//     fetch("/qna", {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify({ query: query })
-//     })
-//     .then(response => response.json())
-//     .then(data => {
-//         if (data.error) {
-//             document.getElementById("qnaResult").innerHTML = `<p style="color: red;">Error: ${data.error}</p>`;
-//         } else {
-//             document.getElementById("qnaResult").innerHTML = `<p><strong>Answer:</strong> ${data.answer}</p>`;
-//         }
-//     })
-//     .catch(error => console.error("Error:", error));
-// }
-
-
-document.getElementById('directoryForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const directoryPath = document.getElementById('directoryPath').value;
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    const progressBar = document.getElementById('progressBar');
-    const statusMessage = document.getElementById('statusMessage');
-    const detailedStatus = document.getElementById('detailedStatus');
-    
-    // Show loading overlay
-    loadingOverlay.style.display = 'flex';
-    
-    // Send directory path to server
-    fetch('/upload', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: 'directory_path=' + encodeURIComponent(directoryPath)
+    fetch("/api/upload-directory", {
+        method: "POST",
+        body: formData
     })
     .then(response => response.json())
     .then(data => {
-        if (data.error) {
-            alert('Error: ' + data.error);
-            loadingOverlay.style.display = 'none';
-            return;
-        }
-        
-        // Start checking status
-        checkStatus();
+        alert(data.message);
+        loadPlagiarismData();
+        loadPDFList();
     })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred. Please try again.');
-        loadingOverlay.style.display = 'none';
-    });
-});
+    .catch(error => console.error("Upload failed:", error));
+}
 
-function checkStatus() {
-    fetch('/status')
+// Function to Load Plagiarism Report
+function loadPlagiarismData() {
+    fetch("/api/plagiarism-report")
         .then(response => response.json())
         .then(data => {
-            const progressBar = document.getElementById('progressBar');
-            const detailedStatus = document.getElementById('detailedStatus');
-            
-            progressBar.style.width = data.progress + '%';
-            detailedStatus.textContent = data.status_message;
-            
-            if (data.error) {
-                alert('Error: ' + data.error);
-                document.getElementById('loadingOverlay').style.display = 'none';
-                return;
-            }
-            
-            if (data.is_processing) {
-                // Check again in 1 second
-                setTimeout(checkStatus, 1000);
-            } else if (data.progress === 100) {
-                // Redirect to dashboard when complete
-                window.location.href = '/dashboard';
-            }
+            const tableBody = document.querySelector("#plagiarism-table tbody");
+            tableBody.innerHTML = "";
+
+            data.forEach(item => {
+                let row = `
+                    <tr>
+                        <td>${item["File 1"]}</td>
+                        <td>${item["File 2"]}</td>
+                        <td>${item["Cosine (TF-IDF)"]}</td>
+                        <td>${item["Jaccard"]}</td>
+                        <td>${item["N-Gram"]}</td>
+                    </tr>`;
+                tableBody.innerHTML += row;
+            });
         })
-        .catch(error => {
-            console.error('Error checking status:', error);
-            setTimeout(checkStatus, 2000); // Try again after 2 seconds
-        });
+        .catch(error => console.error("Error fetching plagiarism data:", error));
+}
+
+// Function to Load PDF List
+function loadPDFList() {
+    fetch("/api/pdf-list")
+        .then(response => response.json())
+        .then(pdfs => {
+            const pdfList = document.getElementById("pdf-list");
+            pdfList.innerHTML = "";
+
+            pdfs.forEach(pdf => {
+                let listItem = document.createElement("li");
+                listItem.innerHTML = `${pdf} <button onclick="openChatbot('${pdf}')">Ask AI</button>`;
+                pdfList.appendChild(listItem);
+            });
+        })
+        .catch(error => console.error("Error fetching PDFs:", error));
+}
+
+// Function to Open Chatbot for a Specific PDF
+function openChatbot(pdfName) {
+    const chatbox = document.getElementById("chatbox");
+    chatbox.innerHTML = `<p>Chatbot for <strong>${pdfName}</strong> activated. Ask your queries below:</p>
+                         <input type="text" id="query" placeholder="Type your question...">
+                         <button onclick="sendQuery('${pdfName}')">Send</button>
+                         <div id="chat-history"></div>`;
 }

@@ -1,114 +1,186 @@
-from flask import Flask, request, jsonify, render_template
-from flask_cors import CORS
-from classification_modules.text_extraction import extract_text_from_pdf, split_into_sentences
-# from classification_modules.plagiarism_checker import check_plagiarism  # Import plagiarism module
-from collections import Counter
-import spacy
 import os
-from DBAQ import qna_script  # Import QnA system
-import docx
+import fitz  # PyMuPDF for PDF text extraction
+import re
+import spacy
+import logging
+import json
+from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask_cors import CORS
+from plagiarism.cosine_similarity import cosine_similarity_count, cosine_similarity_tfidf
+from plagiarism.jaccard_similarity import jaccard_similarity
+from plagiarism.lcs import lcs
+from plagiarism.lsh import lsh_similarity
+from plagiarism.n_gram_similarity import n_gram_similarity
+from langchain_groq import ChatGroq
+from langchain_community.document_loaders import PyPDFDirectoryLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain.agents import create_openai_tools_agent, AgentExecutor
+from langchain.tools.retriever import create_retriever_tool
+from dotenv import load_dotenv
 
-app = Flask(__name__, template_folder="templates", static_folder="static")
-CORS(app)  # Enable CORS for frontend-backend communication
+# from sentence_transformers import SentenceTransformer
+#
+# # Define model name
+# model_name = "sentence-transformers/all-MiniLM-L6-v2"
+#
+# # Load the model
+# model = SentenceTransformer(model_name)
+#
+# # Save the model locally
+# model.save("models/all-MiniLM-L6-v2")
 
-MODEL_PATH = "model_training/trained_model"
+# Load Environment Variables
+load_dotenv()
+logging.getLogger("langchain").setLevel(logging.ERROR)
 
+# Flask Setup
+app = Flask(__name__)
+CORS(app)
 
-def extract_text(file_path):
-    """Extracts text from PDF or DOCX."""
-    if file_path.endswith(".pdf"):
-        return extract_text_from_pdf(file_path)
-    elif file_path.endswith(".docx"):
-        doc = docx.Document(file_path)
-        return "\n".join([para.text for para in doc.paragraphs])
-    return ""
+# Paths & API Key
+PDF_DIRECTORY = "pdf_app_test"
+MODEL_PATH = "models/all-MiniLM-L6-v2"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
+# Ensure directories exist
+os.makedirs(PDF_DIRECTORY, exist_ok=True)
 
-def predict_category(nlp, sentences):
-    """Predicts categories for a list of sentences."""
-    predictions = [max(nlp(sentence).cats, key=nlp(sentence).cats.get) for sentence in sentences]
-    most_common_label, _ = Counter(predictions).most_common(1)[0]
-    return most_common_label, predictions
+# Load NLP Model
+nlp = spacy.load("model_training/trained_model")
 
+# Function: Extract text from PDFs
+def extract_text_from_pdf(pdf_path):
+    text = ""
+    with fitz.open(pdf_path) as doc:
+        for page in doc:
+            text += page.get_text()
+    return text.strip()
 
+# Function: Preprocess text
+def preprocess_text(text):
+    return re.sub(r"[^\w\s]", "", text.lower())
+
+# Function: Predict Category
+def predict_category(text):
+    doc = nlp(text)
+    return max(doc.cats, key=doc.cats.get)
+
+# Function: Check Plagiarism
+def check_plagiarism(docs):
+    results = []
+    for i in range(len(docs)):
+        for j in range(i + 1, len(docs)):
+            results.append({
+                "File 1": docs[i]["name"],
+                "File 2": docs[j]["name"],
+                "Cosine (TF-IDF)": f"{cosine_similarity_tfidf(docs[i]['text'], docs[j]['text']) * 100:.2f}%",
+                "Jaccard": f"{jaccard_similarity(docs[i]['text'], docs[j]['text']) * 100:.2f}%",
+                "LCS": f"{lcs(docs[i]['text'], docs[j]['text']) * 100:.2f}%",
+                "LSH": f"{lsh_similarity(docs[i]['text'], docs[j]['text']) * 100:.2f}%",
+                "N-Gram": f"{n_gram_similarity(docs[i]['text'], docs[j]['text']) * 100:.2f}%"
+            })
+    return results
+
+# Route for the homepage
 @app.route("/")
-def index():
-    """Serve the frontend HTML page."""
+def home():
     return render_template("index.html")
 
+# Ensure the directory exists before saving the files
+def ensure_directory_exists(directory_path):
+    if not os.path.exists(directory_path):
+        os.makedirs(directory_path)
 
-@app.route("/analyze", methods=["POST"])
-def analyze_document():
-    """Handle document uploads, analyze content, and categorize."""
-    if "file" not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
+# API Endpoint to upload directory and process PDFs
+@app.route("/api/upload-directory", methods=["POST"])
+def upload_directory():
+    files = request.files.getlist("pdfs")
+    doc_data = []
 
-    file = request.files["file"]
-    if file.filename == "":
-        return jsonify({"error": "No selected file"}), 400
+    # Ensure the directory exists
+    upload_dir = os.path.join(os.path.dirname(__file__), "temp_pdf_path")
 
-    file_ext = os.path.splitext(file.filename)[1].lower()
-    if file_ext not in [".pdf", ".docx"]:
-        return jsonify({"error": "Unsupported file format"}), 400
+    ensure_directory_exists(upload_dir)
 
-    temp_path = f"uploads/{file.filename}"
-    file.save(temp_path)
+    for file in files:
+        pdf_path = os.path.join(upload_dir, file.filename)
 
+        # Save the uploaded file
+        try:
+            file.save(pdf_path)  # Save the file correctly
+            text = extract_text_from_pdf(pdf_path)
+            category = predict_category(preprocess_text(text))
+            doc_data.append({"name": file.filename, "text": text, "category": category})
+        except Exception as e:
+            logging.error(f"Failed to save {file.filename}: {e}")
+            return jsonify({"error": f"Failed to save file {file.filename}: {str(e)}"}), 500
+
+    plagiarism_results = check_plagiarism(doc_data)
+
+    # Save the results to JSON files
+    with open("plagiarism_report.json", "w") as f:
+        json.dump(plagiarism_results, f)
+
+    with open("pdf_data.json", "w") as f:
+        json.dump(doc_data, f)
+
+    return jsonify({"message": "PDFs Uploaded & Processed!"})
+
+# API Endpoint to get plagiarism report
+@app.route("/api/plagiarism-report", methods=["GET"])
+def get_plagiarism_report():
+    if os.path.exists("plagiarism_report.json"):
+        with open("plagiarism_report.json", "r") as f:
+            return jsonify(json.load(f))
+    return jsonify([])
+
+# API Endpoint to get list of PDFs
+@app.route("/api/pdf-list", methods=["GET"])
+def get_pdf_list():
+    if os.path.exists("pdf_data.json"):
+        with open("pdf_data.json", "r") as f:
+            pdfs = [item["name"] for item in json.load(f)]
+        return jsonify(pdfs)
+    return jsonify([])
+
+# API Endpoint for querying PDFs
+@app.route("/api/query", methods=["POST"])
+def query_pdf():
+    data = request.json
+    pdf_name = data.get("pdf_name")
+    query = data.get("query")
+
+    # Load vector database
+    loader = PyPDFDirectoryLoader(PDF_DIRECTORY)
+    docs = loader.load()
+    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=0)
+    documents = splitter.split_documents(docs)
+    embeddings_model = HuggingFaceEmbeddings(model_name=MODEL_PATH)
+    vectordb = FAISS.from_documents(documents, embeddings_model)
+    retriever = vectordb.as_retriever()
+
+    pdf_tool = create_retriever_tool(retriever, "pdf_search", "Retrieve PDF information.")
+    tools = [pdf_tool]
+
+    # Setup AI Model (LLaMA3 via Groq)
+    llm = ChatGroq(groq_api_key=GROQ_API_KEY, model_name="llama3-8b-8192")
+    agent = create_openai_tools_agent(llm, tools)
+    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=False)
+
+    # Run AI Query
     try:
-        # Load NLP model
-        nlp = spacy.load(MODEL_PATH)
-
-        # Extract text and split into sentences
-        text = extract_text(temp_path)
-        sentences = split_into_sentences(text)
-
-        # Categorization
-        majority_label, all_predictions = predict_category(nlp, sentences)
-
-        # Process PDF for QnA (Initialize QnA system dynamically)
-        global agent_executor
-        agent_executor = qna_script.process_uploaded_pdf(temp_path)
-        if not agent_executor:
-            return jsonify({"error": "Failed to initialize QnA system"}), 500
-
-        return jsonify({
-            "majority_label": majority_label,
-            "all_predictions": all_predictions,
-            "message": "Document successfully processed for QnA."
-        })
-
+        response = agent_executor.invoke({"input": query})
+        return jsonify({"response": response["output"]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-    finally:
-        os.remove(temp_path)
+# Static Route for serving CSS (and other static files)
+@app.route("/static/<path:filename>")
+def serve_static(filename):
+    return send_from_directory(os.path.join(app.root_path, 'static'), filename)
 
-
-@app.route("/qna", methods=["POST"])
-def qna():
-    """Handles user queries based on uploaded document's content."""
-    data = request.get_json()
-    query = data.get("query", "").strip()
-
-    if not query:
-        return jsonify({"error": "No query provided"}), 400
-
-    try:
-        global agent_executor
-        if not agent_executor:
-            return jsonify({"error": "No document has been analyzed yet"}), 400
-
-        response = agent_executor.invoke({
-            "input": query,
-            "context": "",
-            "agent_scratchpad": ""
-        })
-
-        return jsonify({"answer": response["output"]})
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
+# Run Flask app
 if __name__ == "__main__":
     app.run(debug=True)

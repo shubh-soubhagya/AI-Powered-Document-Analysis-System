@@ -23,17 +23,6 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.agents import create_openai_tools_agent, AgentExecutor
 from langchain.tools.retriever import create_retriever_tool
 
-# from sentence_transformers import SentenceTransformer
-#
-# # Define model name
-# model_name = "sentence-transformers/all-MiniLM-L6-v2"
-#
-# # Load the model
-# model = SentenceTransformer(model_name)
-#
-# # Save the model locally
-# model.save("models/all-MiniLM-L6-v2")
-
 # Load Environment Variables
 load_dotenv()
 logging.getLogger("langchain").setLevel(logging.ERROR)

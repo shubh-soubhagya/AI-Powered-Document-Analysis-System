@@ -52,7 +52,7 @@ pip install -r requirements.txt
 Add your PDF files to the directory `pdf_app_test/`
 
 ### 5. Run the Application
-Once everything is set up, you can run the Flask application to start the AI-Powered-Document-Analysis-System
+Once everything is set up, you can run the AI-Powered-Document-Analysis-System
 ```bash
 python app.py
 ```

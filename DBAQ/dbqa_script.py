@@ -18,7 +18,7 @@ logging.getLogger("langchain").setLevel(logging.ERROR)  # Suppress unnecessary l
 groq_api_key = os.getenv('GROQ_API_KEY')
 
 # Load PDFs
-loader = PyPDFDirectoryLoader(r".\pdf_app_test")
+loader = PyPDFDirectoryLoader("pdf_app_test")
 docs = loader.load()
 print(f"✅ Loaded {len(docs)} documents successfully.")
 

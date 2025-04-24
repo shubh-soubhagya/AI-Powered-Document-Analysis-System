@@ -1,6 +1,7 @@
 # 📄 AI-Powered-Document-Analysis-System
 
 The **AI-Powered-Document-Analysis-System** is an AI-powered tool designed to scan PDFs for plagiarism, classify them into financial, legal, and healthcare categories, and enable interaction through a RAG-based chatbot. 
+
 Researchers, enterprises, compliance officers, and students can quickly check plagiarism across academic papers, classify documents, verify content originality, and engage with documents using an AI chatbot to enhance understanding. Ideal for improving productivity in research, compliance, and learning.
 
 ---

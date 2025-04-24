@@ -29,8 +29,8 @@ Researchers, enterprises, compliance officers, and students can quickly check pl
 ### 1. Clone the Repository
 First, clone the repository and navigate into the project directory:
 ```bash
-git clone https://github.com/yourusername/document-analysis-system.git
-cd document-analysis-system
+git clone https://github.com/shubh-soubhagya/AI-Powered-Document-Analysis-System.git
+cd AI-Powered-Document-Analysis-System
 ```
 
 ### 2. Create a `.env` File
@@ -51,6 +51,7 @@ pip install -r requirements.txt
 Add your PDF files to the directory `pdf_app_test/`
 
 ### 5. Run the Application
+Once everything is set up, you can run the Flask application to start the AI-Powered-Document-Analysis-System
 ```bash
 python app.py
 ```
